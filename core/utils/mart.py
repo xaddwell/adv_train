@@ -54,3 +54,6 @@ def mart_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, pe
                      'adversarial_acc': accuracy(y, logits_adv.detach())}
         
     return loss, batch_metrics
+
+
+

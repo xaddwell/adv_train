@@ -30,14 +30,14 @@ from torch.utils.data import DataLoader
 # Setup
 
 parse = parser_train()
-parse.add_argument('--tau', type=float, default=0.995, help='Weight averaging decay.')
+
 args = parse.parse_args()
-assert args.data in SEMISUP_DATASETS, f'Only data in {SEMISUP_DATASETS} is supported!'
 
 
+description = "{}_{}_{}_{}_{}".format(args.model,args.beta,args.data,args.adv_loss,args.desc)
 DATA_DIR = os.path.join(args.data_dir, args.data)
-LOG_DIR = os.path.join(args.log_dir, args.desc)
-WEIGHTS = os.path.join(LOG_DIR, 'weights-best.pt')
+LOG_DIR = os.path.join(args.log_dir,description)
+WEIGHTS = os.path.join(LOG_DIR, '{}_{}_{}-best.pt'.format(args.model,args.beta,args.data))
 if os.path.exists(LOG_DIR):
     shutil.rmtree(LOG_DIR)
 os.makedirs(LOG_DIR)
@@ -61,31 +61,24 @@ if args.debug:
 torch.backends.cudnn.benchmark = True
 
 
-# # Load data
-# seed(args.seed)
-# train_dataset, test_dataset, eval_dataset, train_dataloader, test_dataloader, eval_dataloader = load_data(
-#     DATA_DIR, BATCH_SIZE, BATCH_SIZE_VALIDATION, use_augmentation=args.augment, use_consistency=args.consistency, shuffle_train=True,
-#     aux_data_filename=args.aux_data_filename, unsup_fraction=args.unsup_fraction, validation=True
-# )
-# del train_dataset, test_dataset, eval_dataset
-#
+
 train_transform = T.Compose([T.RandomCrop(32, padding=4), T.RandomHorizontalFlip(0.5), T.ToTensor()])
 test_transform = T.Compose([T.RandomCrop(32, padding=4), T.ToTensor()])
 data_dir = r"D:\cjh\Adversarial_Robustness\datasets\CIFAR10"
 train_dataset = CIFAR10(root=data_dir,train=True,transform=train_transform)
 test_dataset = CIFAR10(root=data_dir,train=False,transform=test_transform)
-test_dataset,eval_dataset = random_split(test_dataset,[5000,5000])
+test_dataset,eval_dataset = random_split(test_dataset,[1000,9000])
 
-train_dataloader = DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
-test_dataloader = DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
-eval_dataloader = DataLoader(train_dataset,batch_size=args.batch_size_validation,shuffle=True)
+train_dataloader = DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
+test_dataloader = DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
+eval_dataloader = DataLoader(eval_dataset,batch_size=args.batch_size_validation,shuffle=True)
 
 
 # Adversarial Training
 
 seed(args.seed)
 if args.tau:
-    print ('Using WA.')
+    print('Using WA.')
     trainer = WATrainer(info, args)
 else:
     trainer = Trainer(info, args)

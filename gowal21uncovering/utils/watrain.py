@@ -18,7 +18,7 @@ from core.utils import Trainer
 from core.utils import set_bn_momentum
 from core.utils import seed
 
-from .trades import trades_loss, trades_loss_LSE, trades_loss_LSM, trades_loss_KLM
+from .trades import trades_loss, trades_loss_LSE, trades_loss_LSM, trades_loss_KLM,martm_loss
 from .cutmix import cutmix
 
 
@@ -111,10 +111,16 @@ class WATrainer(Trainer):
                     x, y = x.to(device), y.to(device)
                 
                 if adversarial:
-                    if self.params.beta is not None and self.params.mart:
+                    if self.params.beta is not None and self.params.adv_loss == "MART":
                         loss, batch_metrics = self.mart_loss(x, y, beta=self.params.beta)
-                    elif self.params.beta is not None and self.params.LSE:
+                    elif self.params.beta is not None and self.params.adv_loss == "LSE":
                         loss, batch_metrics = self.trades_loss_LSE(x, y, beta=self.params.beta)
+                    elif self.params.beta is not None and self.params.adv_loss == "LSM":
+                        loss, batch_metrics = self.trades_loss_LSE(x, y, beta=self.params.beta)
+                    elif self.params.beta is not None and self.params.adv_loss == "KLM":
+                        loss, batch_metrics = self.trades_loss_LSE(x, y, beta=self.params.beta)
+                    elif self.params.beta is not None and self.params.adv_loss == "MARTM":
+                        loss, batch_metrics = self.martm_loss(x, y, beta=self.params.beta)
                     elif self.params.beta is not None:
                         loss, batch_metrics = self.trades_loss(x, y, beta=self.params.beta)
                     else:
@@ -196,6 +202,20 @@ class WATrainer(Trainer):
                                           clip_value=self.params.clip_value,
                                           use_cutmix=self.params.CutMix,
                                           num_classes=self.num_classes)
+
+        return loss, batch_metrics
+
+    def martm_loss(self, x, y, beta):
+        """
+        TRADES training with LSE loss.
+        """
+        loss, batch_metrics = martm_loss(self.model, x, y, self.optimizer, step_size=self.params.attack_step,
+                                              epsilon=self.params.attack_eps, perturb_steps=self.params.attack_iter,
+                                              beta=beta, attack=self.params.attack, label_smoothing=self.params.ls,
+                                              clip_value=self.params.clip_value,
+                                              use_cutmix=self.params.CutMix,
+                                              num_classes=self.num_classes)
+
         return loss, batch_metrics
 
     

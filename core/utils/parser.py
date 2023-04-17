@@ -15,8 +15,6 @@ def parser_train():
     parser = argparse.ArgumentParser(description='Standard + Adversarial Training.')
 
     # parser.add_argument('--augment', type=str2bool, default=True, help='Augment training set.')
-    parser.add_argument('--augment', type=str, default='base', choices=['none', 'base', 'cutout', 'autoaugment', 'randaugment', 'idbh'],
-                        help='Augment training set.')
 
     parser.add_argument('--batch-size', type=int, default=128, help='Batch size for training.')
     parser.add_argument('--batch-size-validation', type=int, default=128, help='Batch size for testing.')
@@ -35,6 +33,7 @@ def parser_train():
     parser.add_argument('--adv-eval-freq', type=int, default=25, help='Adversarial evaluation frequency (in epochs).')
     
     parser.add_argument('--beta', default=None, type=float, help='Stability regularization, i.e., 1/lambda in TRADES.')
+    parser.add_argument('--tau', type=float, default=0.995, help='Weight averaging decay.')
     
     parser.add_argument('--lr', type=float, default=0.4, help='Learning rate for optimizer (SGD).')
     parser.add_argument('--weight-decay', type=float, default=5e-4, help='Optimizer (SGD) weight decay.')
@@ -49,7 +48,6 @@ def parser_train():
     parser.add_argument('--keep-clean', type=str2bool, default=False, help='Use clean samples during adversarial training.')
 
     parser.add_argument('--debug', action='store_true', default=False, help='Debug code. Run 1 epoch of training and evaluation.')
-    parser.add_argument('--mart', action='store_true', default=False, help='MART training.')
     
     parser.add_argument('--unsup-fraction', type=float, default=0.7, help='Ratio of unlabelled data to labelled data.')
     parser.add_argument('--aux-data-filename', type=str, help='Path to additional Tiny Images data.',
@@ -66,7 +64,7 @@ def parser_train():
     parser.add_argument('--resume_path', default='', type=str)
 
     ### Our methods
-    parser.add_argument('--LSE', action='store_true', default=False, help='LSE training.')
+    parser.add_argument('--adv_loss', type=str, default="LSE", help='training loss func')
     parser.add_argument('--ls', type=float, default=0.1, help='label smoothing.')
     parser.add_argument('--clip_value', default=0, type=float)
     parser.add_argument('--CutMix', action='store_true', default=False, help='use CutMix.')

@@ -1,17 +1,17 @@
 {
-    "augment": "base",
     "batch_size": 128,
     "batch_size_validation": 128,
     "data_dir": "D:\\cjh\\Adversarial_Robustness\\datasets\\CIFAR10",
     "log_dir": "trained_models",
-    "data": "cifar10s",
-    "desc": "WRN28-10Swish_cifar10s_lr0p2_TRADES5_epoch400_bs512_fraction0p7_ls0p1",
-    "model": "wrn-28-10-swish",
+    "data": "cifar10",
+    "desc": "0",
+    "model": "wrn-28-10",
     "normalize": false,
     "pretrained_file": null,
     "num_adv_epochs": 400,
     "adv_eval_freq": 25,
     "beta": 5.0,
+    "tau": 0.995,
     "lr": 0.2,
     "weight_decay": 0.0005,
     "scheduler": "cosinew",
@@ -34,6 +34,5 @@
     "LSE": false,
     "ls": 0.1,
     "clip_value": 0,
-    "CutMix": false,
-    "tau": 0.995
+    "CutMix": false
 }

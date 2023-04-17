@@ -1,0 +1,28 @@
+Using device: cuda
+
+
+
+Standard Accuracy-	Test: 11.515926%.
+RST Adversarial training for 400 epochs
+======= Epoch 1 =======
+Loss: 2.5200.	LR: 0.0080
+Standard Accuracy-	Train: 13.15%.	Test: 10.04%.
+Adversarial Accuracy-	Train: 10.54%.
+Adversarial Accuracy-	Eval: 7.78%.
+Time taken: 0:06:41
+======= Epoch 2 =======
+Loss: 2.3200.	LR: 0.0138
+Standard Accuracy-	Train: 18.61%.	Test: 10.01%.
+Adversarial Accuracy-	Train: 16.77%.
+Adversarial Accuracy-	Eval: 10.02%.
+Time taken: 0:06:42
+======= Epoch 3 =======
+Loss: 2.2279.	LR: 0.0305
+Standard Accuracy-	Train: 21.75%.	Test: 8.42%.
+Adversarial Accuracy-	Train: 20.26%.
+Adversarial Accuracy-	Eval: 10.16%.
+Time taken: 0:06:39
+======= Epoch 4 =======
+Loss: 2.2057.	LR: 0.0560
+Standard Accuracy-	Train: 21.74%.	Test: 10.48%.
+Adversarial Accuracy-	Train: 22.01%.
