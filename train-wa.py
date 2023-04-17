@@ -73,6 +73,7 @@ train_dataloader = DataLoader(test_dataset,batch_size=args.batch_size,shuffle=Tr
 test_dataloader = DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
 eval_dataloader = DataLoader(eval_dataset,batch_size=args.batch_size_validation,shuffle=True)
 
+del train_dataset, test_dataset, eval_dataset
 
 # Adversarial Training
 

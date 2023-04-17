@@ -18,8 +18,9 @@ from core.utils import Trainer
 from core.utils import set_bn_momentum
 from core.utils import seed
 
-from .trades import trades_loss, trades_loss_LSE, trades_loss_LSM, trades_loss_KLM,martm_loss
+from .trades import trades_loss, trades_loss_LSE, trades_loss_LSFA, trades_loss_KLFA,martfa_loss
 from .cutmix import cutmix
+from default_config import hook_name_dict
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -115,12 +116,12 @@ class WATrainer(Trainer):
                         loss, batch_metrics = self.mart_loss(x, y, beta=self.params.beta)
                     elif self.params.beta is not None and self.params.adv_loss == "LSE":
                         loss, batch_metrics = self.trades_loss_LSE(x, y, beta=self.params.beta)
-                    elif self.params.beta is not None and self.params.adv_loss == "LSM":
-                        loss, batch_metrics = self.trades_loss_LSE(x, y, beta=self.params.beta)
-                    elif self.params.beta is not None and self.params.adv_loss == "KLM":
-                        loss, batch_metrics = self.trades_loss_LSE(x, y, beta=self.params.beta)
-                    elif self.params.beta is not None and self.params.adv_loss == "MARTM":
-                        loss, batch_metrics = self.martm_loss(x, y, beta=self.params.beta)
+                    elif self.params.beta is not None and self.params.adv_loss == "LSFA":
+                        loss, batch_metrics = self.trades_loss_LSFA(x, y, beta=self.params.beta)
+                    elif self.params.beta is not None and self.params.adv_loss == "KLFA":
+                        loss, batch_metrics = self.trades_loss_KLFA(x, y, beta=self.params.beta)
+                    elif self.params.beta is not None and self.params.adv_loss == "MARTFA":
+                        loss, batch_metrics = self.martfa_loss(x, y, beta=self.params.beta)
                     elif self.params.beta is not None:
                         loss, batch_metrics = self.trades_loss(x, y, beta=self.params.beta)
                     else:
@@ -180,11 +181,11 @@ class WATrainer(Trainer):
                                           num_classes=self.num_classes)
         return loss, batch_metrics
 
-    def trades_loss_LSM(self, x, y, beta):
+    def trades_loss_LSFA(self, x, y, beta):
         """
         TRADES training with LSE loss.
         """
-        loss, batch_metrics = trades_loss_LSM(self.model, x, y, self.optimizer, step_size=self.params.attack_step,
+        loss, batch_metrics = trades_loss_LSFA(self.model, x, y, self.optimizer, hook_name = hook_name_dict[self.params.model], step_size=self.params.attack_step,
                                           epsilon=self.params.attack_eps, perturb_steps=self.params.attack_iter,
                                           beta=beta, attack=self.params.attack, label_smoothing=self.params.ls,
                                           clip_value=self.params.clip_value,
@@ -192,24 +193,22 @@ class WATrainer(Trainer):
                                           num_classes=self.num_classes)
         return loss, batch_metrics
 
-    def trades_loss_KLM(self, x, y, beta):
+    def trades_loss_KLFA(self, x, y, beta):
         """
         TRADES training with LSE loss.
         """
-        loss, batch_metrics = trades_loss_KLM(self.model, x, y, self.optimizer, step_size=self.params.attack_step,
-                                          epsilon=self.params.attack_eps, perturb_steps=self.params.attack_iter,
-                                          beta=beta, attack=self.params.attack, label_smoothing=self.params.ls,
-                                          clip_value=self.params.clip_value,
-                                          use_cutmix=self.params.CutMix,
-                                          num_classes=self.num_classes)
+        loss, batch_metrics = trades_loss_KLFA(self.model, x, y, self.optimizer, hook_name = hook_name_dict[self.params.model],
+                                               step_size=self.params.attack_step,epsilon=self.params.attack_eps, perturb_steps=self.params.attack_iter,
+                                               beta=beta, attack=self.params.attack, label_smoothing=self.params.ls,
+                                               clip_value=self.params.clip_value,use_cutmix=self.params.CutMix,num_classes=self.num_classes)
 
         return loss, batch_metrics
 
-    def martm_loss(self, x, y, beta):
+    def martfa_loss(self, x, y, beta):
         """
         TRADES training with LSE loss.
         """
-        loss, batch_metrics = martm_loss(self.model, x, y, self.optimizer, step_size=self.params.attack_step,
+        loss, batch_metrics = martfa_loss(self.model, x, y, self.optimizer, hook_name = hook_name_dict[self.params.model], step_size=self.params.attack_step,
                                               epsilon=self.params.attack_eps, perturb_steps=self.params.attack_iter,
                                               beta=beta, attack=self.params.attack, label_smoothing=self.params.ls,
                                               clip_value=self.params.clip_value,

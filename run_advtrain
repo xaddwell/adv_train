@@ -2,11 +2,11 @@ python train-wa.py --data-dir 'D:\cjh\Adversarial_Robustness\datasets\CIFAR10' \
     --log-dir 'trained_models' \
     --desc '0' \
     --data cifar10 \
-    --batch-size 128 \
-    --model wrn-28-10 \
+    --batch-size 64 \
+    --model wrn-34-10 \
     --num-adv-epochs 400 \
     --lr 0.2 \
     --beta 5.0 \
     --unsup-fraction 0.7 \
     --ls 0.1 \
-    --adv_loss LSM
+    --adv_loss LSFA

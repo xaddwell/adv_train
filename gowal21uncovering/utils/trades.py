@@ -137,7 +137,7 @@ def trades_loss(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, 
     return loss, batch_metrics
 
 
-def trades_loss_KLM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, perturb_steps=10, beta=1.0,
+def trades_loss_KLFA(model, x_natural, y, optimizer, hook_name, step_size=0.003, epsilon=0.031, perturb_steps=10, beta=1.0,
                 attack='linf-pgd', label_smoothing=0.1, use_cutmix=False, use_consistency=False, cons_lambda=0.0,
                 cons_tem=0.0):
     """
@@ -164,9 +164,11 @@ def trades_loss_KLM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.0
             feature_vector = torch.zeros(size=(b, 0)).cuda()
 
             for fea in feature:
-                feature_vector = torch.cat([feature_vector, fea.fea.mean(dim=(2, 3))], dim=1)
+                if fea.fea.ndim == 4:
+                    tmp = fea.fea.mean(dim=(2, 3))
+                feature_vector = torch.cat([feature_vector, tmp], dim=1)
 
-            return feature_vector.mean(dim=1)
+            return feature_vector
         else:
             return model(x)
 
@@ -235,7 +237,7 @@ def trades_loss_KLM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.0
     else:
         loss_natural = criterion_ce(logits_natural, y)
 
-    loss_robust = criterion_kl(F.log_softmax(logits_adv, dim=1), F.softmax(logits_natural, dim=1))
+    loss_robust = criterion_kl(extractor(x_adv, hook_name), extractor(x_natural, hook_name))
     loss = loss_natural + beta * loss_robust
 
     if use_consistency:
@@ -244,9 +246,12 @@ def trades_loss_KLM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.0
 
     if use_cutmix:  # CutMix
         batch_metrics = {'loss': loss.item(), 'clean_acc': -1,
-                         'adversarial_acc': -1}
+                         "loss_natural": loss_natural.mean().cpu().detach().numpy(),
+                         "loss_robust": loss_robust.mean().cpu().detach().numpy(), 'adversarial_acc': -1}
     else:
         batch_metrics = {'loss': loss.item(), 'clean_acc': accuracy(y, logits_natural.detach()),
+                         "loss_natural": loss_natural.mean().cpu().detach().numpy(),
+                         "loss_robust": loss_robust.mean().cpu().detach().numpy(),
                          'adversarial_acc': accuracy(y, logits_adv.detach())}
 
     return loss, batch_metrics
@@ -373,11 +378,12 @@ def trades_loss_LSEM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.
             output_adv = F.softmax(model(x_adv), dim=1)
             with torch.enable_grad():
                 loss_lse = torch.sum((output_adv - p_natural) ** 2)
-                loss_momentum += loss_lse
+
             grad = torch.autograd.grad(loss_lse, [x_adv])[0]
             x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
             x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
             x_adv = torch.clamp(x_adv, 0.0, 1.0)
+            loss_momentum += loss_lse/torch.norm(x_adv - x_natural, p=2)
     elif attack == 'l2-pgd':
         delta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
         delta = Variable(delta.data, requires_grad=True)
@@ -392,7 +398,7 @@ def trades_loss_LSEM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.
             with torch.enable_grad():
                 output_adv = F.softmax(model(adv), dim=1)
                 loss = (-1) * torch.sum((output_adv - p_natural) ** 2)
-                loss_momentum += loss
+                loss_momentum -= loss
             loss.backward()
 
             # renorming gradient
@@ -407,6 +413,7 @@ def trades_loss_LSEM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.
             delta.data.add_(x_natural)
             delta.data.clamp_(0, 1).sub_(x_natural)
             delta.data.renorm_(p=2, dim=0, maxnorm=epsilon)
+            loss_momentum += loss / torch.norm(delta,p=2)
         x_adv = Variable(x_natural + delta, requires_grad=False)
     else:
         raise ValueError(f'Attack={attack} not supported for TRADES training!')
@@ -431,8 +438,6 @@ def trades_loss_LSEM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.
 
     loss_robust = F.relu(loss_robust - clip_value)  # clip loss value
 
-    print(loss_momentum.shape)
-
     loss = loss_natural.mean() + beta * loss_robust.mean() + loss_momentum
 
     if use_cutmix:  # CutMix
@@ -445,7 +450,7 @@ def trades_loss_LSEM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.
     return loss, batch_metrics
 
 
-def trades_loss_LSM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.031, perturb_steps=10, beta=1.0,
+def trades_loss_LSFA(model, x_natural, y, optimizer, hook_name, step_size=0.003, epsilon=0.031, perturb_steps=10, beta=1.0,
                     attack='linf-pgd', label_smoothing=0.1, clip_value=0, use_cutmix=False, num_classes=10):
     """
     SCORE training (Ours).
@@ -470,9 +475,11 @@ def trades_loss_LSM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.0
             feature_vector = torch.zeros(size=(b, 0)).cuda()
 
             for fea in feature:
-                feature_vector = torch.cat([feature_vector, fea.fea.mean(dim=(2, 3))], dim=1)
+                if fea.fea.ndim == 4:
+                    tmp = fea.fea.mean(dim=(2, 3))
+                feature_vector = torch.cat([feature_vector, tmp], dim=1)
 
-            return feature_vector.mean(dim=1)
+            return feature_vector
         else:
             return model(x)
 
@@ -544,23 +551,24 @@ def trades_loss_LSM(model, x_natural, y, optimizer, step_size=0.003, epsilon=0.0
     logits_natural = F.softmax(model(x_natural), dim=1)
     logits_adv = F.softmax(model(x_adv), dim=1)
     loss_natural = torch.sum((logits_natural - y_onehot) ** 2, dim=-1)
-    loss_robust = torch.sum((logits_adv - logits_natural) ** 2, dim=-1)
+    loss_robust = torch.sum((extractor(x_adv,hook_name) - extractor(x_natural,hook_name)) ** 2, dim=-1)
 
     loss_robust = F.relu(loss_robust - clip_value)  # clip loss value
 
     loss = loss_natural.mean() + beta * loss_robust.mean()
 
     if use_cutmix:  # CutMix
-        batch_metrics = {'loss': loss.item(), 'clean_acc': -1,
-                         'adversarial_acc': -1}
+        batch_metrics = {'loss': loss.item(), 'clean_acc': -1, "loss_natural": loss_natural.mean().cpu().detach().numpy(),
+                         "loss_robust": loss_robust.mean().cpu().detach().numpy(), 'adversarial_acc': -1}
     else:
         batch_metrics = {'loss': loss.item(), 'clean_acc': accuracy(y, logits_natural.detach()),
+                         "loss_natural": loss_natural.mean().cpu().detach().numpy(),"loss_robust": loss_robust.mean().cpu().detach().numpy(),
                          'adversarial_acc': accuracy(y, logits_adv.detach())}
 
     return loss, batch_metrics
 
 
-def martm_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, perturb_steps=10, beta=6.0,
+def martfa_loss(model, x_natural, y, optimizer, hook_name, step_size=0.007, epsilon=0.031, perturb_steps=10, beta=6.0,
               attack='linf-pgd'):
     """
     MART training (Wang et al, 2020).
@@ -569,6 +577,28 @@ def martm_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, p
     kl = nn.KLDivLoss(reduction='none')
     model.eval()
     batch_size = len(x_natural)
+
+    def extractor(x, hook_name):
+        if hook_name:
+            feature = []
+            b, _, _, _ = x.shape
+            for n, m in model.named_modules():
+                if n in hook_name:
+                    cur_hook = HookTool()
+                    m.register_forward_hook(cur_hook.hook_fun)
+                    feature.append(cur_hook)
+
+            _ = model(x)
+            feature_vector = torch.zeros(size=(b, 0)).cuda()
+
+            for fea in feature:
+                if fea.fea.ndim == 4:
+                    tmp = fea.fea.mean(dim=(2, 3))
+                feature_vector = torch.cat([feature_vector, tmp], dim=1)
+
+            return feature_vector
+        else:
+            return model(x)
 
     # generate adversarial example
     x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
@@ -601,11 +631,11 @@ def martm_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, p
     true_probs = torch.gather(nat_probs, 1, (y.unsqueeze(1)).long()).squeeze()
 
     loss_robust = (1.0 / batch_size) * torch.sum(
-        torch.sum(kl(torch.log(adv_probs + 1e-12), nat_probs), dim=1) * (1.0000001 - true_probs))
+        torch.sum(kl(torch.log(extractor(x_adv, hook_name) + 1e-12), extractor(x_adv, hook_name)), dim=1) * (1.0000001 - true_probs))
     loss = loss_adv + float(beta) * loss_robust
 
-    batch_metrics = {'loss': loss.item(), 'clean_acc': accuracy(y, logits.detach()),
-                     'adversarial_acc': accuracy(y, logits_adv.detach())}
+    batch_metrics = {'loss': loss.item(), 'clean_acc': accuracy(y, logits.detach()),"loss_adv": loss_adv.item(),
+                     "loss_robust": loss_robust.item(),'adversarial_acc': accuracy(y, logits_adv.detach())}
 
     return loss, batch_metrics
 

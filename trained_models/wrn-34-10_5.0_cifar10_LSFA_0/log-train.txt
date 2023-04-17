@@ -1,0 +1,7 @@
+Using device: cuda
+
+
+
+Standard Accuracy-	Test: 11.191406%.
+RST Adversarial training for 400 epochs
+======= Epoch 1 =======
